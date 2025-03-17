@@ -40,7 +40,7 @@ def _coeff(p, a, k, mu_or_scale):
     for ind, term in zip(inds, range(k)):
         if ind >= k:
             break
-        out += a[ind] * (p - .5)**term
+        out = out + a[ind] * (p - .5)**term
     return out
 
 class Metalog:
@@ -63,24 +63,28 @@ class Metalog:
     def fit(data, N=DEFAULT_K, criterion='AIC', likelihood_size=10):
         s = np.sort(data)
         Q_c= s[1:-1]
-        n = len(s)
-        p_i = _make_p_i(n)
+        p_i = _make_p_i( len(s) )
         logit = np.log(p_i / (1 - p_i))
         if type(N) == int:
             return Metalog._k_fit(N, p_i, logit, Q_c)
         likelihood_samp = np.random.choice(s, size=likelihood_size)
         criterion_value = np.zeros(len(N))
         a_values = [None] * len(N)
-        #
-        for k in N:
-            av = Metalog._k_fit(k, p_i, logit, Q_c)
+        for k, n in zip(range(len(N)), N):
+            av = Metalog._k_fit(n, p_i, logit, Q_c)
             a_values[k] = av
             assert( criterion=='AIC' )
-            randsamp = np.random.choice(s, size=10)
-            pdf = Metalog(av, intervals=len(s)).pdf
-            likelihood = np.product( pdf(randsamp) )
-            AICval = 2*k - 2*np.log(likelihood)
-            criterion_value[k] = AICval
+            randsamp = np.random.choice(s, size=likelihood_size)
+            try:
+                pdf = Metalog(av, intervals=len(s)).pdf
+                likelihood = np.prod( pdf(randsamp) )
+                AICval = 2*n - 2*np.log(likelihood)
+                criterion_value[k] = AICval
+            except ValueError as e:
+                if str(e) == "`x` must be strictly increasing sequence.":
+                    criterion_value[k] = np.inf
+                else:
+                    raise
         return a_values[ np.argmin(criterion_value) ]
 
     @staticmethod
