@@ -55,34 +55,40 @@ class Metalog:
             CDF_emperical_x, CDF_emperical_p
         )
         self.pdf = self.cdf.derivative()
-        
+
+    def support(self, intervals=100):
+        p_i = _make_p_i(intervals)
+        CDF_emperical_x = _quantile(p_i, self.a)
+        pdf_values = self.pdf(CDF_emperical_x)
+        return CDF_emperical_x[ np.where(pdf_values >= 0)[0] ]
 
     DEFAULT_K = range(2, 10)
 
     @staticmethod
-    def fit(data, N=DEFAULT_K, criterion='AIC', likelihood_size=10):
+    def fit(data, K=DEFAULT_K, criterion='AIC', likelihood_size=15):
+        assert(likelihood_size > np.max(K) + 1)
         s = np.sort(data)
         Q_c= s[1:-1]
         p_i = _make_p_i( len(s) )
         logit = np.log(p_i / (1 - p_i))
-        if type(N) == int:
-            return Metalog._k_fit(N, p_i, logit, Q_c)
-        likelihood_samp = np.random.choice(s, size=likelihood_size)
-        criterion_value = np.zeros(len(N))
-        a_values = [None] * len(N)
-        for k, n in zip(range(len(N)), N):
-            av = Metalog._k_fit(n, p_i, logit, Q_c)
-            a_values[k] = av
+        if type(K) == int:
+            return Metalog._k_fit(K, p_i, logit, Q_c)
+        randsamp = np.random.choice(s, size=likelihood_size)
+        criterion_value = np.zeros(len(K))
+        a_values = [None] * len(K)
+        for i, k in zip(range(len(K)), K):
+            av = Metalog._k_fit(k, p_i, logit, Q_c)
+            a_values[i] = av
             assert( criterion=='AIC' )
-            randsamp = np.random.choice(s, size=likelihood_size)
             try:
                 pdf = Metalog(av, intervals=len(s)).pdf
                 likelihood = np.prod( pdf(randsamp) )
-                AICval = 2*n - 2*np.log(likelihood)
-                criterion_value[k] = AICval
+                #AICval = 2*k*(likelihood_size/(likelihood_size - k - 1)) - 2*np.log(likelihood)
+                AICval = 2*k - 2*np.log(likelihood)
+                criterion_value[i] = AICval
             except ValueError as e:
                 if str(e) == "`x` must be strictly increasing sequence.":
-                    criterion_value[k] = np.inf
+                    criterion_value[i] = np.inf
                 else:
                     raise
         return a_values[ np.argmin(criterion_value) ]
@@ -91,7 +97,7 @@ class Metalog:
     def _k_fit(k, p_i, logit, Q_c):
         a = cvx.Variable(k)
         mu_expression = _coeff(p_i, a, k, 'mu')
-        scale_expression = _coeff(p_i, a, k, 'mu')
+        scale_expression = _coeff(p_i, a, k, 'scale')
         objective = cvx.Minimize(
             cvx.norm2(
                 mu_expression + cvx.multiply(scale_expression, logit) - Q_c

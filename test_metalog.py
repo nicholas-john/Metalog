@@ -1,7 +1,4 @@
 import numpy as np
-import cvxpy as cvx
-import matplotlib.pyplot as plt
-import scipy.interpolate as interp
 
 from metalog.metalog import Metalog
 
