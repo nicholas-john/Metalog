@@ -48,7 +48,6 @@ class Metalog:
     def __init__(self, a, intervals=100):
         self.a = a
         p_i = _make_p_i(intervals)
-        logit = _logit(p_i)
         CDF_emperical_x = _quantile(p_i, a)
         CDF_emperical_p = p_i
         self.cdf = interp.PchipInterpolator( # monoticity-preserving cubic splines
@@ -58,7 +57,7 @@ class Metalog:
 
     def support(self, intervals=100):
         p_i = _make_p_i(intervals)
-        CDF_emperical_x = _quantile(p_i, self.a)
+        CDF_emperical_x = self.quantile(p_i)
         pdf_values = self.pdf(CDF_emperical_x)
         return CDF_emperical_x[ np.where(pdf_values >= 0)[0] ]
 
@@ -103,7 +102,8 @@ class Metalog:
                 mu_expression + cvx.multiply(scale_expression, logit) - Q_c
             )
         )
-        cvx.Problem(objective).solve()
+        constraints = [cvx.diff(mu_expression + cvx.multiply(scale_expression, logit)) >= 0] # monotonic quantile
+        cvx.Problem(objective, constraints).solve()
         return a.value
 
     def quantile(self, x):
