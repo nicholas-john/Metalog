@@ -82,8 +82,8 @@ class Metalog:
             try:
                 pdf = Metalog(av, intervals=len(s)).pdf
                 likelihood = np.prod( pdf(randsamp) )
-                #AICval = 2*k*(likelihood_size/(likelihood_size - k - 1)) - 2*np.log(likelihood)
-                AICval = 2*k - 2*np.log(likelihood)
+                AICval = 2*k*(likelihood_size/(likelihood_size - k - 1)) - 2*np.log(likelihood)
+                #AICval = 2*k - 2*np.log(likelihood)
                 criterion_value[i] = AICval
             except ValueError as e:
                 if str(e) == "`x` must be strictly increasing sequence.":
